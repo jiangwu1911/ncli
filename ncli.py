@@ -23,7 +23,7 @@ def new_statistics(s):
     if s['reportname'] == 'TransactionSucRateStatistics':
         return TransactionSucRateStatistics(reportname=s['reportname'],
                                             reporttype=s['reporttype'],
-                                            url=s['url'],
+                                            url=conf.netis_url,
                                             token=conf.netis_token,
                                             viewname=s['viewname'],
                                             capname=s['capname'],
@@ -36,7 +36,7 @@ def run_stats(db):
             stat = new_statistics(s)
             stat.create() 
             stat.get_status()
-            stat.get_results()
+            stat.get_results(db)
             stat.delete()
 
         except Exception, e:

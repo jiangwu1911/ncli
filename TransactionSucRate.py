@@ -8,6 +8,7 @@ import re
 import datetime
 from sqlalchemy import Column, Integer, String, DateTime, Numeric, Sequence
 from sqlalchemy.ext.declarative import declarative_base
+from Statistics import Statistics
 
 log = logging.getLogger("ncli")
 
@@ -15,7 +16,7 @@ Base = declarative_base()
 
 class TransactionSucRate(Base):
     __tablename__ = 'Rsk_SysTransactionSucRate'
-    riskId = Column(Integer, Sequence('seq_pk'), primary_key=True)
+    riskId = Column(String(36), primary_key=True)
     riskCode = Column(String(32))
     riskDate = Column(DateTime)
     snt = Column(Numeric(12, 0))
@@ -33,10 +34,12 @@ class TransactionSucRate(Base):
         self.checkFlag = 0
         self.uploadFlag = 0
         self.dataFlag = 0
+        self.dataRemark = ''
 
     def __repr__(self):
-        return("<Rsk_SysTransactionSucRate('%s', '%s', %d, %d, '%s', %d, '%s', %d, %d, '%s')>"
-             % (self.riskCode,
+        return("<Rsk_SysTransactionSucRate('%s', '%s', '%s', %d, %d, '%s', %d, '%s', %d, %d, '%s')>"
+             % (self.riskId,
+                self.riskCode,
                 self.riskDate,
                 self.snt,
                 self.tnt,
@@ -48,10 +51,12 @@ class TransactionSucRate(Base):
                 self.dataRemark))
 
 
-class TransactionSucRateStatistics:
+class TransactionSucRateStatistics(Statistics):
     _sid = ''
     _result_url = ''
     _delete_url = ''
+    begin_time = ''
+    end_time = ''
 
     def __init__(self, reportname='', url='', viewname='', capname='',
                  riskcode='', reporttype='', token=''):
@@ -69,13 +74,13 @@ class TransactionSucRateStatistics:
         h =  httplib2.Http()
         # 缺省是日报
         now = time.time()
-        end_time = now - (now % 86400) + time.timezone
-        begin_time = end_time - 86400
+        self.end_time = now - (now % 86400) + time.timezone
+        self.begin_time = self.end_time - 86400
 
         data = { "earliest": "2015-09-07 01:15:00",
                  "latest": "2015-09-07 20:00:00",
-                 #"earliest": time.ctime(begin_time),
-                 #"latest": time.ctime(end_time),
+                 #"earliest": time.ctime(self.begin_time),
+                 #"latest": time.ctime(self.end_time),
                  "view_name": self.viewname,
                  "cap_name": self.capname,
                  "indicators": self.indicators }
@@ -116,15 +121,48 @@ class TransactionSucRateStatistics:
                     self._result_url = link['href']
 
 
-    def get_results(self):
+    def get_results(self, db):
+        if self._result_url == '':
+            return
         h =  httplib2.Http()
         resp, content = h.request(self._result_url + "?offset=0&limit=2",
                                   'GET',
                                   headers={'Authorization': 'token %s' % self.token,
                                            'Accept': 'application/vnd.crossflow.bpc+json;indent=4'})
-        log.debug(resp)
-        log.debug(content)
+        #log.debug(resp)
+        #log.debug(content)
+        result = json.loads(content)
+        if not result.has_key('items'):
+            raise Exception('Stats result does not contain items.')
+        items = result['items']
+        if len(items) < 1:
+            raise Exception('Stats result does not contain items.')
+        
+        trans_count = items[0]['trans_count']
+        succ_rate = items[0]['succ_rate']
 
+        # 查看数据库中是否已有记录,如果有先删除旧数据
+        riskDate = time.strftime('%Y-%m-%d', time.gmtime(self.begin_time))
+        db.query(TransactionSucRate).filter(TransactionSucRate.riskDate==riskDate,
+                                            TransactionSucRate.riskCode==self.riskcode).delete()
+        record = TransactionSucRate()
+        record.riskId = self.get_risk_id()
+        record.riskCode = self.riskcode
+        record.riskDate = time.strftime('%Y-%m-%d', time.gmtime(self.begin_time))
+        record.snt = trans_count * succ_rate / 100
+        record.tnt = trans_count
+        record.createTime = record.uploadTime = self.get_current_time()
+        db.add(record)
+        db.commit()
+         
 
     def delete(self):
-        print self._delete_url
+        if self._result_url == '':
+            return
+        h =  httplib2.Http()
+        resp, content = h.request(self._delete_url,
+                                  'DELETE',
+                                  headers={'Authorization': 'token %s' % self.token,
+                                           'Accept': 'application/vnd.crossflow.bpc+json;indent=4'})
+        #log.debug(resp)
+        #log.debug(content)
