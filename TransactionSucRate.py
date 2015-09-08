@@ -148,7 +148,7 @@ class TransactionSucRateStatistics(Statistics):
         record = TransactionSucRate()
         record.riskId = self.get_risk_id()
         record.riskCode = self.riskcode
-        record.riskDate = time.strftime('%Y-%m-%d', time.gmtime(self.begin_time))
+        record.riskDate = riskDate
         record.snt = trans_count * succ_rate / 100
         record.tnt = trans_count
         record.createTime = record.uploadTime = self.get_current_time()
