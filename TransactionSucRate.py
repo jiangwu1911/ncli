@@ -72,7 +72,7 @@ class TransactionSucRateStatistics(Statistics):
 
     def create(self):
         h =  httplib2.Http()
-        # È±Ê¡ÊÇÈÕ±¨
+        # ç¼ºçœæ˜¯æ—¥æŠ¥
         now = time.time()
         self.end_time = now - (now % 86400) + time.timezone
         self.begin_time = self.end_time - 86400
@@ -141,7 +141,7 @@ class TransactionSucRateStatistics(Statistics):
         trans_count = items[0]['trans_count']
         succ_rate = items[0]['succ_rate']
 
-        # ²é¿´Êı¾İ¿âÖĞÊÇ·ñÒÑÓĞ¼ÇÂ¼,Èç¹ûÓĞÏÈÉ¾³ı¾ÉÊı¾İ
+        # æŸ¥çœ‹æ•°æ®åº“ä¸­æ˜¯å¦å·²æœ‰è®°å½•,å¦‚æœæœ‰å…ˆåˆ é™¤æ—§æ•°æ®
         riskDate = time.strftime('%Y-%m-%d', time.gmtime(self.begin_time))
         db.query(TransactionSucRate).filter(TransactionSucRate.riskDate==riskDate,
                                             TransactionSucRate.riskCode==self.riskcode).delete()

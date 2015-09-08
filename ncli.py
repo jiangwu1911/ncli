@@ -30,30 +30,9 @@ def new_statistics(s):
                                             riskcode=s['riskcode'])
 
 
-def run_stats(db):
-    for s in conf.stats:
-        try:
-            stat = new_statistics(s)
-            stat.create() 
-            stat.get_status()
-            stat.get_results(db)
-            stat.delete()
-
-        except Exception, e:
-            log.error(traceback.format_exc())
-
-
-def main():
-    from optparse import OptionParser
-
-    usage = "Usage: %prog [options]"
-    parser = OptionParser(usage, version=VERSION)
-    options, args = parser.parse_args()
-
-    init_log()
-    log.debug("Begin to run statistics.")
-
-    engine = create_engine('mysql://%s:%s@%s:3306/%s' % 
+def run_stats(options):
+    # 连接数据库
+    engine = create_engine('mysql://%s:%s@%s:3306/%s' %
                            (conf.db_config['user'],
                             conf.db_config['passwd'],
                             conf.db_config['host'],
@@ -61,9 +40,48 @@ def main():
     Session = sessionmaker(bind=engine)
     db = Session()
 
-    run_stats(db)
+    for s in conf.stats:
+        if (options.daily and s['reporttype']=='daily') or \
+                (options.daily and s['reporttype']=='weekly') or \
+                (options.daily and s['reporttype']=='monthly'):
+            try:
+                stat = new_statistics(s)
+                stat.create() 
+                stat.get_status()
+                stat.get_results(db)
+                stat.delete()
+                log.debug('Stats \'%s\' finished.' % s['name'])
+            except Exception, e:
+                log.error(traceback.format_exc())
 
     db.close()
+
+
+def main():
+    from optparse import OptionParser
+
+    # 处理命令行参数
+    usage = "Usage: %prog [options]"
+    parser = OptionParser(usage, version=VERSION)
+    parser.add_option("-d", "--daily", action="store_true",
+                      dest="daily",
+                      default=False,
+                      help="Run daily statistics.")
+    parser.add_option("-w", "--weekly", action="store_true",
+                      dest="weekly",
+                      default=False,
+                      help="Run weekly statistics.")
+    parser.add_option("-m", "--monthly", action="store_true",
+                      dest="monthly",
+                      default=False,
+                      help="Run monthly statistics.")
+    options, args = parser.parse_args()
+
+    init_log()
+    log.debug("Begin to run statistics.")
+
+    run_stats(options)
+
     log.debug("Run statistics complete.")
 
 

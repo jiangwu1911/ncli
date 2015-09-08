@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 db_config = {
     'host': '10.1.1.88',
     'user': 'root',
@@ -11,7 +13,7 @@ netis_token = 'et44bf919hc62bja9488lq846dp0e4bbgfc6ff4b'
 
 stats = [
             { 
-                'name': 'core busi',
+                'name': '核心业务系统交易成功率',
                 'viewname': 'app11',
                 'capname': 'cap2',
                 'riskcode': '1001',
